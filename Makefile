@@ -30,6 +30,9 @@ MODE = -DLOCAL_FNL
 MODE = -DEQUIL_FNL
 MODE = -DORTOG_FNL
 MODE = -DORTOG_LSS_FNL
+MODE = -DPAR_ODD_FNL
+OPT += -DUSE_PAR_ODD_NORM  # With this the power spectrum of the parity odd trispectrum sims is identical to the gaussian (p_NL=0) case.
+OPT += -DSAVE_PHI_FIELD   # only switch this on if you want to save the potentials (gaussian and non-Gaussian). This is useful for debugging
 
 ifeq ($(MODE),-DONLY_GAUSSIAN)
 	EXEC:=2LPT
@@ -41,6 +44,8 @@ else ifeq ($(MODE),-DORTOG_FNL)
 	EXEC:=2LPTNGOR
 else ifeq ($(MODE),-DORTOG_LSS_FNL)
 	EXEC:=2LPTNGORLSS
+else ifeq ($(MODE),-DPAR_ODD_FNL)
+	EXEC:=2LPTNGPARODD
 endif
 OPT += $(MODE)
 OPTIONS =  $(OPT)

@@ -105,6 +105,11 @@ void print_setup(void) {
   char exec[] = "2LPTNGORLSS";
 #endif
 
+#ifdef PAR_ODD_FNL
+  char exec[] = "2LPTNGPARODD";
+#endif
+// end wrc
+
 
   pstr[0] = '*';
   for (int i = 1; i < 79/2 - 3; i++)
@@ -177,6 +182,37 @@ void displacement_fields(void) {
   double orth_p = 27.0/(-21.0+743.0/(7*(20.0*pow(PI,2.0)-193.0)));
   double orth_t = (2.0+20.0/9.0*orth_p)/(6*(1.0+5.0/9.0*orth_p));
 #endif
+#ifdef PAR_ODD_FNL
+  // p^(alpha)p^x/y/z
+  fftw_complex *(cpxpalpha);
+  fftw_real *(pxpalpha);
+  fftw_complex *(cpypalpha);
+  fftw_real *(pypalpha);
+  fftw_complex *(cpzpalpha);
+  fftw_real *(pzpalpha);
+  // p^(beta)p^x/y/z
+  fftw_complex *(cpxpbeta);
+  fftw_real *(pxpbeta);
+  fftw_complex *(cpypbeta);
+  fftw_real *(pypbeta);
+  fftw_complex *(cpzpbeta);
+  fftw_real *(pzpbeta);
+  // p^(gamma)p^x/y/z
+  fftw_complex *(cpxpgamma);
+  fftw_real *(pxpgamma);
+  fftw_complex *(cpypgamma);
+  fftw_real *(pypgamma);
+  fftw_complex *(cpzpgamma);
+  fftw_real *(pzpgamma);
+
+  fftw_complex *(cpartpotcubic);
+  fftw_real *(partpotcubic);
+  double transfer_correction;
+  double k_alpha = -1. ; // this is alpha/2 as we apply it to k^2
+  double k_beta =  -0.5 ; // this is beta/2 as we apply it to k^2
+  double k_gamma =  0. ;  // this is gamma/2 as we apply it to k^2
+#endif
+
 // ****  wrc ****
 #endif
 #endif
@@ -599,6 +635,13 @@ void displacement_fields(void) {
         }
 
      if (ThisTask == 0 ) print_timed_done(19);
+     //wrc
+
+#ifdef SAVE_PHI_FIELD
+      if (ThisTask == 0) {printf("Writing potential to disc... \n"); fflush(stdout);};
+     write_phi(cpot, 0);
+#endif
+     MPI_Barrier(MPI_COMM_WORLD);
      /*** For non-local models it is important to keep all factors of SQRT(-1) as done below ***/
      /*** Notice also that there is a minus to convert from Bardeen to gravitational potential ***/
 
@@ -691,6 +734,10 @@ void displacement_fields(void) {
       if (ThisTask == 0) {printf("Computing orthogonal-LSS non-Gaussian potential... "); fflush(stdout);};
 #endif
 
+#ifdef PAR_ODD_FNL
+      if (ThisTask == 0) {printf("Computing parity odd trispectrum non-Gaussian potential... "); fflush(stdout);};
+#endif
+
 // ****  wrc ****
       /**** NON-LOCAL PRIMORDIAL POTENTIAL **************/ 
 
@@ -736,6 +783,47 @@ void displacement_fields(void) {
     ASSERT_ALLOC(cp1p2p3_K12G);
 #endif
 // ****  wrc ****
+#ifdef PAR_ODD_FNL
+    cpxpalpha = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pxpalpha  = (fftw_real *) cpxpalpha ;
+    ASSERT_ALLOC(cpxpalpha);
+    cpypalpha = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pypalpha  = (fftw_real *) cpypalpha ;
+    ASSERT_ALLOC(cpypalpha);
+    cpzpalpha = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pzpalpha  = (fftw_real *) cpzpalpha ;
+    ASSERT_ALLOC(cpzpalpha);
+
+
+    cpxpbeta = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pxpbeta  = (fftw_real *) cpxpbeta ;
+    ASSERT_ALLOC(cpxpbeta);
+    cpypbeta = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pypbeta  = (fftw_real *) cpypbeta ;
+    ASSERT_ALLOC(cpypbeta);
+    cpzpbeta = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pzpbeta  = (fftw_real *) cpzpbeta ;
+    ASSERT_ALLOC(cpzpalpha);
+
+
+    cpxpgamma = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pxpgamma  = (fftw_real *) cpxpgamma ;
+    ASSERT_ALLOC(cpxpgamma);
+    cpypgamma = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pypgamma  = (fftw_real *) cpypgamma ;
+    ASSERT_ALLOC(cpypgamma);
+    cpzpgamma = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    pzpgamma  = (fftw_real *) cpzpgamma ;
+    ASSERT_ALLOC(cpzpalpha);
+    
+
+    cpartpotcubic = (fftw_complex *) malloc(bytes = sizeof(fftw_real) * TotalSizePlusAdditional);
+    partpotcubic  = (fftw_real *) cpartpotcubic ;
+    ASSERT_ALLOC(cpartpotcubic);
+
+#endif
+
+// ****  wrc ****
 // ******************* DSJ ***********************
 	  exp_1_over_3 = (4. - PrimordialIndex) / 3.; // n_s modified exponent for generalized laplacian/inverse laplacian, exponent for k^2
 	  exp_1_over_6 = (4. - PrimordialIndex) / 6.; // n_s modified exponent for generalized conjugate gradient magnitude and its inverse, exponent for k^2 
@@ -760,6 +848,30 @@ void displacement_fields(void) {
 #ifdef ORTOG_LSS_FNL
                 cp1p2p3inv[coord].re = 0;
                 cp1p2p3inv[coord].im = 0;
+#endif
+#ifdef PAR_ODD_FNL
+      cpartpotcubic[coord].re = 0;
+      cpartpotcubic[coord].im = 0;
+      cpxpalpha[coord].re = 0;
+      cpxpalpha[coord].im = 0;
+      cpypalpha[coord].re = 0;
+      cpypalpha[coord].im = 0;
+      cpzpalpha[coord].re = 0;
+      cpzpalpha[coord].im = 0;
+
+      cpxpbeta[coord].re = 0;
+      cpxpbeta[coord].im = 0;
+      cpypbeta[coord].re = 0;
+      cpypbeta[coord].im = 0;
+      cpzpbeta[coord].re = 0;
+      cpzpbeta[coord].im = 0;
+
+      cpxpgamma[coord].re = 0;
+      cpxpgamma[coord].im = 0;
+      cpypgamma[coord].re = 0;
+      cpypgamma[coord].im = 0;
+      cpzpgamma[coord].re = 0;
+      cpzpgamma[coord].im = 0;
 #endif
 // ****  wrc ****
 		cpartpot[coord].re = 0;
@@ -815,6 +927,57 @@ void displacement_fields(void) {
                       cp1p2p3inv[coord].re =  cpot[coord].re/kmag_1_over_3;
                       cp1p2p3inv[coord].im =  cpot[coord].im/kmag_1_over_3; 
 #endif
+#ifdef PAR_ODD_FNL
+                      if(i == 0 && j == 0 && k == 0)
+                      {
+                          cpxpalpha[coord].re = 0;
+                          cpxpalpha[coord].im = 0;
+                          cpypalpha[coord].re = 0;
+                          cpypalpha[coord].im = 0;
+                          cpzpalpha[coord].re = 0;
+                          cpzpalpha[coord].im = 0;
+
+
+                          cpxpbeta[coord].re = 0;
+                          cpxpbeta[coord].im = 0;
+                          cpypbeta[coord].re = 0;
+                          cpypbeta[coord].im = 0;
+                          cpzpbeta[coord].re = 0;
+                          cpzpbeta[coord].im = 0;
+
+
+                          cpxpgamma[coord].re = 0;
+                          cpxpgamma[coord].im = 0;
+                          cpypgamma[coord].re = 0;
+                          cpypgamma[coord].im = 0;
+                          cpzpgamma[coord].re = 0;
+                          cpzpgamma[coord].im = 0;
+                          continue;
+                      }
+                      //pow(kmag2);
+                        cpxpalpha[coord].re =  kvec[0] *pow(kmag2,k_alpha)*cpot[coord].im;
+                        cpxpalpha[coord].im = -kvec[0] *pow(kmag2,k_alpha)*cpot[coord].re;
+                        cpypalpha[coord].re =  kvec[1] *pow(kmag2,k_alpha)*cpot[coord].im;
+                        cpypalpha[coord].im = -kvec[1] *pow(kmag2,k_alpha)*cpot[coord].re;
+                        cpzpalpha[coord].re =  kvec[2] *pow(kmag2,k_alpha)*cpot[coord].im;
+                        cpzpalpha[coord].im = -kvec[2] *pow(kmag2,k_alpha)*cpot[coord].re;
+
+
+                        cpxpbeta[coord].re =  kvec[0] *pow(kmag2,k_beta)*cpot[coord].im;
+                        cpxpbeta[coord].im = -kvec[0] *pow(kmag2,k_beta)*cpot[coord].re;
+                        cpypbeta[coord].re =  kvec[1] *pow(kmag2,k_beta)*cpot[coord].im;
+                        cpypbeta[coord].im = -kvec[1] *pow(kmag2,k_beta)*cpot[coord].re;
+                        cpzpbeta[coord].re =  kvec[2] *pow(kmag2,k_beta)*cpot[coord].im;
+                        cpzpbeta[coord].im = -kvec[2] *pow(kmag2,k_beta)*cpot[coord].re;
+
+
+                        cpxpgamma[coord].re =  kvec[0] *pow(kmag2,k_gamma)*cpot[coord].im;
+                        cpxpgamma[coord].im = -kvec[0] *pow(kmag2,k_gamma)*cpot[coord].re;
+                        cpypgamma[coord].re =  kvec[1] *pow(kmag2,k_gamma)*cpot[coord].im;
+                        cpypgamma[coord].im = -kvec[1] *pow(kmag2,k_gamma)*cpot[coord].re;
+                        cpzpgamma[coord].re =  kvec[2] *pow(kmag2,k_gamma)*cpot[coord].im;
+                        cpzpgamma[coord].im = -kvec[2] *pow(kmag2,k_gamma)*cpot[coord].re;
+#endif
 // ****  wrc ****                  
 // ************************************ DSJ ********************************
             }
@@ -829,6 +992,19 @@ void displacement_fields(void) {
 // ****  wrc ****
 #ifdef ORTOG_LSS_FNL
       rfftwnd_mpi(Inverse_plan, 1, p1p2p3inv, Workspace, FFTW_NORMAL_ORDER);
+#endif
+#ifdef PAR_ODD_FNL
+      rfftwnd_mpi(Inverse_plan, 1, cpxpalpha, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpypalpha, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpzpalpha, Workspace, FFTW_NORMAL_ORDER);
+
+      rfftwnd_mpi(Inverse_plan, 1, cpxpbeta, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpypbeta, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpzpbeta, Workspace, FFTW_NORMAL_ORDER);
+
+      rfftwnd_mpi(Inverse_plan, 1, cpxpgamma, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpypgamma, Workspace, FFTW_NORMAL_ORDER);
+      rfftwnd_mpi(Inverse_plan, 1, cpzpgamma, Workspace, FFTW_NORMAL_ORDER);
 #endif
 // ****  wrc ****
       MPI_Barrier(MPI_COMM_WORLD);
@@ -856,6 +1032,15 @@ void displacement_fields(void) {
               p1p2p3tre[coord] = p1p2p3nab[coord]*partpot[coord];
               partpot[coord] = pot[coord]*pot[coord];       /** NOTE: now partpot is potential squared **/
 
+// ****  wrc ****
+#ifdef PAR_ODD_FNL
+              partpotcubic[coord] = (
+                                     pxpalpha[coord]*(pypbeta[coord]*pzpgamma[coord]-pzpbeta[coord]*pypgamma[coord])+
+                                     pypalpha[coord]*(pzpbeta[coord]*pxpgamma[coord]-pxpbeta[coord]*pzpgamma[coord])+
+                                     pzpalpha[coord]*(pxpbeta[coord]*pypgamma[coord]-pypbeta[coord]*pxpgamma[coord])
+                                     );
+#endif
+// ****  wrc ****
             }
 
       MPI_Barrier(MPI_COMM_WORLD);
@@ -873,7 +1058,9 @@ void displacement_fields(void) {
       rfftwnd_mpi(Forward_plan, 1, p1p2p3_K12F, Workspace, FFTW_NORMAL_ORDER);
       rfftwnd_mpi(Forward_plan, 1, p1p2p3_K12G, Workspace, FFTW_NORMAL_ORDER);
 #endif
-
+#ifdef PAR_ODD_FNL
+      rfftwnd_mpi(Forward_plan, 1, partpotcubic, Workspace, FFTW_NORMAL_ORDER);
+#endif
 // ****  wrc ****
       MPI_Barrier(MPI_COMM_WORLD);
 
@@ -953,6 +1140,22 @@ void displacement_fields(void) {
               cpot[coord].im += 3*Fnl * (-(1.0+1.0/3.0*orth_p) * cpartpot[coord].im - 1.0/3.0*(2.0+20./9.*orth_p) * cp1p2p3sym[coord].im / kmag_2_over_3 + 2.0*(1.0+5.0/9.0*orth_p)*(1.0-orth_t) * cp1p2p3sca[coord].im / kmag_1_over_3 + 2.0*(1.0+5.0/9.0*orth_p)*orth_t* cp1p2p3nab[coord].im / kmag_2_over_3);
               cpot[coord].im += 3*Fnl * (orth_p/27.0 * cp1p2p3_K12D[coord].im*kmag_2_over_3 - 20.0*orth_p/27.0 * cp1p2p3_K12E[coord].im / kmag_1_over_3 - 4.0*orth_p/9.0 * cp1p2p3_K12F[coord].im * kmag_1_over_3 + 10.0/9.0*orth_p * cp1p2p3_K12G[coord].im );
 #endif
+#ifdef PAR_ODD_FNL
+
+#ifdef USE_PAR_ODD_NORM
+              transfer_correction = pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
+#endif
+              cpot[coord].re += Fnl * (cpartpotcubic[coord].re);
+              cpot[coord].im += Fnl * (cpartpotcubic[coord].im);
+
+
+#ifdef USE_PAR_ODD_NORM
+              transfer_correction /= pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
+              transfer_correction = pow(transfer_correction,0.5);
+              cpot[coord].re *= transfer_correction;
+              cpot[coord].im *= transfer_correction;
+#endif
+#endif
 // ****  wrc ****
               cpot[coord].re /= (double) nmesh3; 
               cpot[coord].im /= (double) nmesh3; 
@@ -972,14 +1175,35 @@ void displacement_fields(void) {
       free(cp1p2p3_K12F);
       free(cp1p2p3_K12G);
 #endif
+#ifdef PAR_ODD_FNL
+      free(cpxpalpha);
+      free(cpypalpha);
+      free(cpzpalpha);
+
+      free(cpxpbeta);
+      free(cpypbeta);
+      free(cpzpbeta);
+
+      free(cpxpgamma);
+      free(cpypgamma);
+      free(cpzpgamma);
+
+      free(cpartpotcubic);
+#endif
 // ****  wrc ****
 
 
       if (ThisTask == 0 ) print_timed_done(1);
   
 #endif
+     //wrc
+#ifdef SAVE_PHI_FIELD
 
-  if (ThisTask == 0) {printf("Computing gradient of non-Gaussian potential..."); fflush(stdout);};
+     if (ThisTask == 0) {printf("Writing potential to disc..."); fflush(stdout);};
+     write_phi(cpot, 1);
+#endif
+     MPI_Barrier(MPI_COMM_WORLD);
+  if (ThisTask == 0) {printf("Computing gradient of non-Gaussian potential... \n"); fflush(stdout);};
 
     /****** FINISHED NON LOCAL POTENTIAL OR LOCAL FNL, STILL IN NONGAUSSIAN SECTION ****/   
     /*****  Now 2LPT ****/
