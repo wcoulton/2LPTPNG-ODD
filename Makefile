@@ -25,14 +25,14 @@ OPT   +=  -DNO64BITID     # switch this on if you want normal 32-bit IDs
 
 #OPT += -DONLY_ZA    # swith this on if you want ZA initial conditions (2LPT otherwise)
 
-MODE = -DONLY_GAUSSIAN
-MODE = -DLOCAL_FNL
-MODE = -DEQUIL_FNL
-MODE = -DORTOG_FNL
-MODE = -DORTOG_LSS_FNL
+#MODE = -DONLY_GAUSSIAN
+#MODE = -DLOCAL_FNL
+#MODE = -DEQUIL_FNL
+#MODE = -DORTOG_FNL
+#MODE = -DORTOG_LSS_FNL
 MODE = -DPAR_ODD_FNL
 OPT += -DUSE_PAR_ODD_NORM  # With this the power spectrum of the parity odd trispectrum sims is identical to the gaussian (p_NL=0) case.
-OPT += -DSAVE_PHI_FIELD   # only switch this on if you want to save the potentials (gaussian and non-Gaussian). This is useful for debugging
+#OPT += -DSAVE_PHI_FIELD   # only switch this on if you want to save the potentials (gaussian and non-Gaussian). This is useful for debugging
 
 ifeq ($(MODE),-DONLY_GAUSSIAN)
 	EXEC:=2LPT
@@ -67,8 +67,28 @@ MPICHLIB = -L/usr/local/mpich_gcc/lib
 OPTIMIZE =   -O3 -Wall    # optimization and warning flags (default)
 
 
+SYSTYPE="flatiron"
+
+ifeq ($(SYSTYPE),"flatiron")
+CC       =   mpicc     # sets the C-compiler   
+OPT      +=  -DMPICH_IGNORE_CXX_SEEK
+OPTIMIZE =   -std=gnu99 -O3 -g -Wall -Wno-unused-but-set-variable -Wno-uninitialized -Wno-unknown-pragmas -Wno-unused-function -march=native
+GSL_INCL =  -I$GSL_ROOT/include
+GSL_LIBS =  
+FFTW_INCL=  -I$FFTW_ROOT/include 
+FFTW_LIBS=  -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
+MPICHLIB =  -lmpi
+HDF5INCL =  -DH5_USE_16_API
+HDF5LIB  =  -lhdf5 -lz
+ifeq (NUM_THREADS,$(findstring NUM_THREADS,$(CONFIGVARS)))
+OPTIMIZE +=  -fopenmp
+OPT      += -DIMPOSE_PINNING -DSOCKETS=4 -DMAX_CORES=16
+endif
+endif
+
 #FFTW_LIB =  $(FFTW_LIBS) -ldrfftw_mpi -ldfftw_mpi -ldrfftw -ldfftw
-FFTW_LIB =  $(FFTW_LIBS) -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
+#FFTW_LIB =  $(FFTW_LIBS) -lrfftw_mpi -lfftw_mpi -lrfftw -lfftw
+FFTW_LIB =  $(FFTW_LIBS)
 
 LIBS   =   -lm  $(MPICHLIB)  $(FFTW_LIB)  $(GSL_LIBS)  -lgsl -lgslcblas
 
