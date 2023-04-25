@@ -60,6 +60,11 @@ int main(int argc, char **argv) {
   checkchoose();  
   set_units();
   initialize_transferfunction(); 
+
+// wrc
+#ifdef USE_PAR_ODD_NORM
+  read_transfer_PNG_table();
+#endif
   initialize_powerspectrum(); 
   initialize_ffts(); 
   read_glass(GlassFile);
@@ -736,6 +741,11 @@ void displacement_fields(void) {
 
 #ifdef PAR_ODD_FNL
       if (ThisTask == 0) {printf("Computing parity odd trispectrum non-Gaussian potential... "); fflush(stdout);};
+#ifdef USE_PAR_ODD_NORM
+      if (ThisTask == 0) {printf("Using mode normalization to match primordial power. "); fflush(stdout);};
+      
+#endif
+
 #endif
 
 // ****  wrc ****
@@ -1142,16 +1152,20 @@ void displacement_fields(void) {
 #endif
 #ifdef PAR_ODD_FNL
 
-#ifdef USE_PAR_ODD_NORM
-              transfer_correction = pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
-#endif
+// #ifdef USE_PAR_ODD_NORM
+//              transfer_correction = pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
+// #endif
               cpot[coord].re += Fnl * (cpartpotcubic[coord].re);
               cpot[coord].im += Fnl * (cpartpotcubic[coord].im);
 
 
 #ifdef USE_PAR_ODD_NORM
-              transfer_correction /= pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
-              transfer_correction = pow(transfer_correction,0.5);
+//              transfer_correction /= pow(cpot[coord].re,2)+pow(cpot[coord].im,2);
+//              transfer_correction = pow(transfer_correction,0.5);
+              kmag = sqrt(kmag2);
+
+              transfer_correction = TransferFunc_PNG_Tabulated(kmag)*pow(Fnl,2)+1.0; // this  PNG/Gaus - 1. We need Gaus/PNG
+              transfer_correction = pow(1./(transfer_correction),0.5); // quadratic in Fnl
               cpot[coord].re *= transfer_correction;
               cpot[coord].im *= transfer_correction;
 #endif

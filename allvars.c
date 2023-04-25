@@ -20,6 +20,7 @@ long long IDStart;
 char GlassFile[500];
 char FileWithInputSpectrum[500];
 char FileWithInputTransfer[500]; 
+char FileWithInputTransferPNG[500]; 
 
 int GlassTileFac;
 

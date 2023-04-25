@@ -26,8 +26,16 @@ static int NTransferTable;
 static struct trans_table
 {
   double logk, logT;
-}
- *TransferTable;
+} *TransferTable;
+
+static int NTransferTablePNG;
+static struct trans_table_PNG
+{
+  double logk, T;
+} *TransferTablePNG;
+
+// end wrc
+
 
 double TransferFunc(double k)
 {
@@ -692,4 +700,139 @@ void add_WDM_thermal_speeds(float *vel)
   vel[0] += vx;
   vel[1] += vy;
   vel[2] += vz;
+}
+
+
+
+
+// wrc below
+
+int compare_transfer_logk_PNG(const void *a, const void *b)
+{
+  if(((struct trans_table_PNG *) a)->logk < (((struct trans_table_PNG *) b)->logk))
+    return -1;
+
+  if(((struct trans_table_PNG *) a)->logk > (((struct trans_table_PNG *) b)->logk))
+    return +1;
+
+  return 0;
+}
+
+void read_transfer_PNG_table(void)
+{
+  FILE *fd;
+  char buf[500];
+  double k, t;
+  double Tlower;
+  int i;
+
+  sprintf(buf, FileWithInputTransferPNG);
+
+  if(!(fd = fopen(buf, "r")))
+    {
+      printf("can't read input transfer function  in file '%s' on task %d\n", buf, ThisTask);
+      FatalError(17);
+    }
+
+  NTransferTablePNG = 0;
+  do
+    {
+      if(fscanf(fd, " %le %le ", &k, &t) == 2)
+        NTransferTablePNG++;
+      else
+        break;
+    }
+  while(1);
+
+  fclose(fd);
+
+  TransferTablePNG = malloc(NTransferTablePNG * sizeof(struct trans_table_PNG));
+
+  sprintf(buf, FileWithInputTransferPNG);
+
+  if(!(fd = fopen(buf, "r")))
+    {
+      printf("can't read input transfer function in file '%s' on task %d\n", buf, ThisTask);
+      FatalError(18);
+    }
+
+  NTransferTablePNG = 0;
+  do
+    {
+      if(fscanf(fd, " %le %le ", &k, &t) == 2)
+        {
+          TransferTablePNG[NTransferTablePNG].logk = log10(k);
+          TransferTablePNG[NTransferTablePNG].T = (t);
+          NTransferTablePNG++;
+        }
+      else
+        break;
+    }
+  while(1);
+
+  fclose(fd);
+
+  qsort(TransferTablePNG, NTransferTablePNG, sizeof(struct trans_table_PNG), compare_transfer_logk_PNG); 
+
+  klower = pow(10.0, TransferTablePNG[0].logk);
+
+  // if(TransferTablePNG[0].logk >= -4.6 ) 
+  //    {
+  //     printf("\n WARNING: klower is %f, may be too large to normalize transfer  \n",klower);
+  //     FatalError(1111);  
+  //    }
+  // if(TransferTablePNG[NTransferTablePNG - 1].logk <= log10(500./8.) ) 
+  //    {
+  //     printf("\n WARNING: kmax is may be too small to normalize transfer  \n");
+  //     printf("\n Values outside the input range will be taken to be zero  \n");
+  //     // FatalError(1111);  
+  //    }
+
+      // Tlower = TransferTablePNG[0].logT;      
+      // for(i=0; i < NTransferTablePNG ; i++ )
+      //     {
+      //     TransferTablePNG[i].logT -= Tlower;
+      //     }
+}
+
+
+
+
+double TransferFunc_PNG_Tabulated(double k)
+{
+  double logk, logT, T, u, dlogk; 
+  int binlow, binhigh, binmid;
+
+  k *= (InputSpectrum_UnitLength_in_cm / UnitLength_in_cm);     /* convert to h/Mpc */
+
+  logk = log10(k);
+
+  if(logk < TransferTablePNG[0].logk || logk > TransferTablePNG[NTransferTablePNG - 1].logk)
+    return 0;
+
+  binlow = 0;
+  binhigh = NTransferTablePNG - 1;
+
+  while(binhigh - binlow > 1)
+    {
+      binmid = (binhigh + binlow) / 2;
+      if(logk < TransferTablePNG[binmid].logk)
+        binhigh = binmid;
+      else
+        binlow = binmid;
+    }
+
+  dlogk = TransferTablePNG[binhigh].logk - TransferTablePNG[binlow].logk;
+
+  if(dlogk == 0)
+    FatalError(777);
+
+  u = (logk - TransferTablePNG[binlow].logk) / dlogk;
+
+  T = (1 - u) * TransferTablePNG[binlow].T + u * TransferTablePNG[binhigh].T;
+  //logT = (1 - u) * TransferTablePNG[binlow].logT + u * TransferTablePNG[binhigh].logT;
+
+  //T = pow(10.0, logT);
+
+  return T;
 }

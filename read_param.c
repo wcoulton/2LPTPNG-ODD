@@ -78,6 +78,16 @@ void read_parameterfile(char *fname)
   id[nt++] = INT;
 // ********** FAVN/DSJ  ************
 
+
+// ********** WRC ************
+
+  strcpy(tag[nt], "FileWithInputTransferPNG");
+  addr[nt] = FileWithInputTransferPNG;
+  id[nt++] = STRING;
+
+
+// ********** WRC ************
+
   strcpy(tag[nt], "Nmesh");
   addr[nt] = &Nmesh;
   id[nt++] = INT;

@@ -46,7 +46,8 @@ WhichTransfer    2         % "3" selects Transfer function deduced from Power Sp
                            % other options not properly implemented yet 
            
 FileWithInputSpectrum    /mnt/home/wcoulton/PNG/2LPTPNG-LSS-ORTH/inputs/input_spectrum.dat 
-FileWithInputTransfer    /mnt/home/wcoulton/PNG/2LPTPNG-LSS-ORTH/inputs/input_transfer.dat  
+FileWithInputTransfer    /mnt/home/wcoulton/PNG/2LPTPNG-LSS-ORTH/inputs/input_transfer.dat 
+FileWithInputTransferPNG /mnt/home/wcoulton/PNG/2LPTPNG-LSS-ORTH/inputs/Tk_PNG.txt 
 ShapeGamma               0.21     % only needed for Efstathiou power spectrum 
                                                                                                                                           
 NumFilesWrittenInParallel 1  % limits the number of files that are written in parallel when outputting

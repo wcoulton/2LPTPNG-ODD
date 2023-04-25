@@ -70,6 +70,7 @@ extern long long IDStart;
 extern char     GlassFile[500]; 
 extern char     FileWithInputSpectrum[500];
 extern char     FileWithInputTransfer[500];
+extern char     FileWithInputTransferPNG[500];
 
 extern int      GlassTileFac; 
 
