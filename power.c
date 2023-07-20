@@ -28,12 +28,19 @@ static struct trans_table
   double logk, logT;
 } *TransferTable;
 
+// wrc
 static int NTransferTablePNG;
 static struct trans_table_PNG
 {
   double logk, T;
 } *TransferTablePNG;
 
+
+static int NCdfTable;
+static struct pdf_table
+{
+  double x, cdf;
+} *CdfTable;
 // end wrc
 
 
@@ -723,9 +730,11 @@ void read_transfer_PNG_table(void)
   FILE *fd;
   char buf[500];
   double k, t;
-  double Tlower;
-  int i;
 
+  if(ThisTask == 0)
+  {
+  printf("reading transfer file: %s \n",FileWithInputTransferPNG);
+  }
   sprintf(buf, FileWithInputTransferPNG);
 
   if(!(fd = fopen(buf, "r")))
@@ -800,7 +809,7 @@ void read_transfer_PNG_table(void)
 
 double TransferFunc_PNG_Tabulated(double k)
 {
-  double logk, logT, T, u, dlogk; 
+  double logk, T, u, dlogk; 
   int binlow, binhigh, binmid;
 
   k *= (InputSpectrum_UnitLength_in_cm / UnitLength_in_cm);     /* convert to h/Mpc */
@@ -835,4 +844,159 @@ double TransferFunc_PNG_Tabulated(double k)
   //T = pow(10.0, logT);
 
   return T;
+}
+
+
+
+
+double pdf_with_tails(double x) // p(x) for pdf
+{
+    double alpha_new,normG,normE,prb;
+    double TailsNewDistStd = sqrt(TailsNewDistVariance);
+
+
+    alpha_new = TailsSwitchSigma/(TailsNewDistStd*TailsExponentPow*pow( TailsSwitchSigma*TailsNewDistStd,TailsExponentPow-1) );
+    
+    normG = sqrt(1./TailsNewDistVariance/2./M_PI);
+    if ( fabs(x)>TailsSwitchSigma*TailsNewDistStd)
+    {
+        normE = normG;
+        normE *= exp(-1./2*pow(TailsSwitchSigma,2));
+        normE *= exp(alpha_new*pow( TailsSwitchSigma*TailsNewDistStd , TailsExponentPow ) );
+        prb = normE*exp(-alpha_new*pow(fabs(x),TailsExponentPow));
+    }
+    else
+    {
+
+        prb = normG*exp(-.5*pow(x,2)/TailsNewDistVariance);
+    }
+     
+    return prb;
+}
+
+
+
+void initalize_cdf_table(void)
+{
+
+  int i,NPkInt;
+  double x_min,x_max,x_step,fac,Beta;
+  double k0,k01,k1,dk,k2Pk0,k2Pk01,k2Pk1;
+
+
+
+  // Pk normalization from main.c
+  //fac = pow(2 * PI / Box, 1.5);
+  fac = pow(2*PI,1.5);
+  Beta = 1.5 * Omega / (2998. * 2998. / UnitLength_in_cm / UnitLength_in_cm * 3.085678e24 * 3.085678e24 ) / D0 ;  
+
+
+
+  theoryGausVar =0;
+
+  // Number of ks and kmin,kmax (implicit)
+  NPkInt = 100000;
+  k0 =  2*PI / Box;
+  dk = (PI/Box*Nsample-k0)/NPkInt;
+
+  // In the loop k0 is updated as k1 from the previous iteration. Need to set this manually for i=0
+
+  k2Pk0 = Anorm * exp( PrimordialIndex * log(k0) );   /* initial normalized power */                      
+  k2Pk0 *= pow(fac * Beta / k0,2);    /* amplitude of the initial gaussian potential */
+
+  for(i=0; i < NPkInt ; i++ )
+      {
+        k1 = k0+dk;
+
+        k01 = (k1+k0)/2;
+
+
+        k2Pk01 = Anorm * exp( PrimordialIndex * log(k01) );   /* initial normalized power */                      
+        k2Pk01 *= pow(fac * Beta / k01,2);    /* amplitude of the initial potential */
+        k2Pk1 = Anorm * exp( PrimordialIndex * log(k1) );   /* initial normalized power */                      
+        k2Pk1 *= pow(fac * Beta / k1,2);    /* amplitude of the initial potential */
+
+        // simps 1/3
+        theoryGausVar+= dk/6.*(k2Pk0+4*k2Pk01+k2Pk1);
+
+        k0=k1;
+        k2Pk0=k2Pk1;
+      }
+
+  theoryGausVar /= 2*pow(M_PI,2);
+  //theoryGausVar*=1.0224997103866253e+18;
+  if(ThisTask == 0)
+  {
+  printf("Theoretical Variance set to: %e \n", theoryGausVar);
+  }
+  TailsNewDistVariance = theoryGausVar;//*TailsVarianceRatio;
+ 
+  NCdfTable  = 10000;
+  
+  x_min = -15*pow(TailsNewDistVariance,0.5);
+  x_max = 15*pow(TailsNewDistVariance,0.5);
+  x_step = (x_max-x_min)/(NCdfTable);
+
+  CdfTable = malloc(NCdfTable * sizeof(struct pdf_table));
+
+  CdfTable[0].x = x_min;
+  CdfTable[0].cdf = pdf_with_tails(x_min);
+
+  for(i=1; i < NCdfTable ; i++ )
+  {
+    CdfTable[i].x =  CdfTable[i-1].x+x_step;
+    CdfTable[i].cdf = CdfTable[i-1].cdf+ pdf_with_tails(CdfTable[i].x);
+  }
+
+  for(i=0; i < NCdfTable ; i++ )
+  {
+    CdfTable[i].cdf /= CdfTable[NCdfTable-1].cdf;
+  }
+
+}
+
+
+
+
+double inverse_cdf_tabulated(double cdf_test)
+{
+  double  x, u, dCdf; 
+  int binlow, binhigh, binmid;
+
+
+  if(cdf_test < CdfTable[0].cdf)
+    return CdfTable[0].x;
+  else if (cdf_test == CdfTable[NCdfTable-1].cdf)
+    return CdfTable[NCdfTable-1].x;
+
+  binlow = 0;
+  binhigh = NCdfTable - 1;
+
+  while(binhigh - binlow > 1)
+    {
+      binmid = (binhigh + binlow) / 2;
+      if(cdf_test < CdfTable[binmid].cdf)
+        binhigh = binmid;
+      else
+        binlow = binmid;
+    }
+
+  dCdf = CdfTable[binhigh].cdf - CdfTable[binlow].cdf;
+
+  if(dCdf == 0)
+    FatalError(777);
+
+  u = (cdf_test - CdfTable[binlow].cdf) / dCdf;
+
+  x = (1 - u) * CdfTable[binlow].x + u * CdfTable[binhigh].x;
+  return x;
+}
+
+
+
+double transform_to_tails(double phi)
+{
+  double  cdf_value; 
+  cdf_value = (.5*(1.+erf(phi/(sqrt(theoryGausVar)*sqrt(2)))));
+  return inverse_cdf_tabulated(cdf_value);
 }

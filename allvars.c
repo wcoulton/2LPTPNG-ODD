@@ -20,6 +20,7 @@ long long IDStart;
 char GlassFile[500];
 char FileWithInputSpectrum[500];
 char FileWithInputTransfer[500]; 
+//wrc
 char FileWithInputTransferPNG[500]; 
 
 int GlassTileFac;
@@ -84,3 +85,9 @@ int Type, MinType, MaxType;
 int WDM_On;
 int WDM_Vtherm_On;
 double WDM_PartMass_in_kev;
+
+//wrc
+double TailsSwitchSigma;
+double TailsNewDistVariance;
+double TailsExponentPow;
+double theoryGausVar;

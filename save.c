@@ -57,6 +57,9 @@ void write_phi(fftw_complex * cpot, int isNonGaus)
 #ifdef PAR_ODD_FNL 
       sprintf(buf_will, "%s_par_odd",buf_will);
 #endif
+#ifdef TAILS_FNL 
+      sprintf(buf_will, "%s_tails",buf_will);
+#endif
 
       if(!(write_ptr = fopen(buf_will, "w")))
         {

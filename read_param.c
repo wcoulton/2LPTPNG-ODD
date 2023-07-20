@@ -85,6 +85,16 @@ void read_parameterfile(char *fname)
   addr[nt] = FileWithInputTransferPNG;
   id[nt++] = STRING;
 
+#ifdef TAILS_FNL
+  strcpy(tag[nt], "TailsSwitchSigma");
+  addr[nt] = &TailsSwitchSigma;
+  id[nt++] = FLOAT;
+
+
+  strcpy(tag[nt], "TailsExponentPow");
+  addr[nt] = &TailsExponentPow;
+  id[nt++] = FLOAT;
+#endif
 
 // ********** WRC ************
 

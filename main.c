@@ -65,7 +65,18 @@ int main(int argc, char **argv) {
 #ifdef USE_PAR_ODD_NORM
   read_transfer_PNG_table();
 #endif
+#ifdef USE_TAILS_PK_NORM
+  read_transfer_PNG_table();
+#endif
+// end wrc
+
+// wrc
   initialize_powerspectrum(); 
+#ifdef TAILS_FNL  
+  initalize_cdf_table();
+#endif
+// end wrc
+
   initialize_ffts(); 
   read_glass(GlassFile);
 
@@ -113,6 +124,9 @@ void print_setup(void) {
 #ifdef PAR_ODD_FNL
   char exec[] = "2LPTNGPARODD";
 #endif
+#ifdef TAILS_FNL
+  char exec[] = "2LPTNGTAILS";
+#endif
 // end wrc
 
 
@@ -137,6 +151,9 @@ void print_setup(void) {
   printf("  HubbleParam = %.4f  OmegaDM_2ndSpecies = %.2e          fNL = %+.2e\n\n", HubbleParam, OmegaDM_2ndSpecies, Fnl); 
   printf("   FixedAmplitude = %d    PhaseFlip = % d   SphereMode = %d    Seed = %d\n", FixedAmplitude, PhaseFlip, SphereMode, Seed);   
 
+#ifdef TAILS_FNL
+   printf("   TailsExponentPow = %.2f   TailsSwitchSigma = %.2f \n", TailsExponentPow,TailsSwitchSigma);  
+#endif
   for (int i = 0; i < 79; i++)
     pstr[i] = '*';
   printf("\n%s\n\n", pstr);
@@ -563,7 +580,11 @@ void displacement_fields(void) {
 // ***************** FAVN/DSJ *************
                       
                       phig = sqrt(phig) * fac * Beta / kmag2;    /* amplitude of the initial gaussian potential */
-               
+#ifdef USE_TAILS_PK_NORM
+                      phig *= sqrt(TransferFunc_PNG_Tabulated(kmag)); // assumes transfer function for power spectrum ratio!
+#endif
+
+
                       if(k > 0)
                         {
                           if(i >= Local_x_start && i < (Local_x_start + Local_nx))
@@ -650,7 +671,83 @@ void displacement_fields(void) {
      /*** For non-local models it is important to keep all factors of SQRT(-1) as done below ***/
      /*** Notice also that there is a minus to convert from Bardeen to gravitational potential ***/
 
-#ifdef LOCAL_FNL  
+//wrc 
+#ifdef TAILS_FNL  
+
+      if (ThisTask == 0) {printf("Computing  non-Gaussian potential with tails..."); fflush(stdout);};
+
+      /******* ADDING TAILS TO PRIMORDIAL POTENTIAL ************/
+      rfftwnd_mpi(Inverse_plan, 1, pot, Workspace, FFTW_NORMAL_ORDER);
+      fflush(stdout);
+
+      /* square the potential in configuration space */
+
+      for(i = 0; i < Local_nx; i++)
+        for(j = 0; j < Nmesh; j++)
+          for(k = 0; k < Nmesh; k++)
+            {
+             coord = (i * Nmesh + j) * (2 * (Nmesh / 2 + 1)) + k; 
+             pot[coord] =  transform_to_tails(pot[coord]);
+   
+            }
+
+      MPI_Barrier(MPI_COMM_WORLD);
+      rfftwnd_mpi(Forward_plan, 1, pot, Workspace, FFTW_NORMAL_ORDER);
+
+       /* remove the N^3 I got by forwardfurier and put zero to zero mode */
+
+      nmesh3 = ((unsigned int) Nmesh) * ((unsigned int) Nmesh ) * ((unsigned int) Nmesh);    
+      for(i = 0; i < Local_nx; i++)
+        for(j = 0; j < Nmesh; j++)
+          for(k = 0; k <= Nmesh / 2 ; k++)
+            {
+              coord = (i * Nmesh + j) * (Nmesh / 2 + 1) + k;
+
+// ****************************** DSJ *************************
+          if(SphereMode == 1)
+      {
+              ii = i + Local_x_start;
+
+        if(ii < Nmesh / 2)
+        kvec[0] = ii * 2 * PI / Box;
+        else
+        kvec[0] = -(Nmesh - ii) * 2 * PI / Box;
+
+        if(j < Nmesh / 2)
+        kvec[1] = j * 2 * PI / Box;
+        else
+        kvec[1] = -(Nmesh - j) * 2 * PI / Box;
+
+        if(k < Nmesh / 2)
+        kvec[2] = k * 2 * PI / Box;
+        else
+        kvec[2] = -(Nmesh - k) * 2 * PI / Box;
+
+        kmag = sqrt(kvec[0] * kvec[0] + kvec[1] * kvec[1] + kvec[2] * kvec[2]);
+
+        if(kmag * Box / (2 * PI) > Nsample / 2) { /* select a sphere in k-space */
+        cpot[coord].re = 0.;
+        cpot[coord].im = 0.;
+        continue;
+        }
+      }
+// ****************************** DSJ *************************
+
+              cpot[coord].re /= (double) nmesh3; 
+              cpot[coord].im /= (double) nmesh3; 
+
+            }
+        
+       if(ThisTask == 0) {
+              cpot[0].re = 0.;
+              cpot[0].im = 0.; 
+           }
+
+
+      if (ThisTask == 0 ) print_timed_done(7);
+//end wrc
+
+#elif LOCAL_FNL  
 
       if (ThisTask == 0) {printf("Computing local non-Gaussian potential..."); fflush(stdout);};
 

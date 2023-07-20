@@ -70,6 +70,7 @@ extern long long IDStart;
 extern char     GlassFile[500]; 
 extern char     FileWithInputSpectrum[500];
 extern char     FileWithInputTransfer[500];
+//wrc
 extern char     FileWithInputTransferPNG[500];
 
 extern int      GlassTileFac; 
@@ -146,3 +147,8 @@ extern int Type, MinType, MaxType;
 extern int    WDM_On;
 extern int    WDM_Vtherm_On;
 extern double WDM_PartMass_in_kev;
+
+//wrc
+extern double TailsSwitchSigma;
+extern double TailsExponentPow;
+extern double theoryGausVar;

@@ -67,3 +67,7 @@ int compare_type(const void *a, const void *b);
 void write_phi(fftw_complex * cpot, int isNonGaus);
 double TransferFunc_PNG_Tabulated(double k);
 void read_transfer_PNG_table(void);
+double pdf_with_tails(double);
+void initalize_cdf_table(void);
+double inverse_cdf_tabulated(double);
+double transform_to_tails(double);

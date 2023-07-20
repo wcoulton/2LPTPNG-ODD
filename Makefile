@@ -30,8 +30,11 @@ OPT   +=  -DNO64BITID     # switch this on if you want normal 32-bit IDs
 #MODE = -DEQUIL_FNL
 #MODE = -DORTOG_FNL
 #MODE = -DORTOG_LSS_FNL
-MODE = -DPAR_ODD_FNL
-OPT += -DUSE_PAR_ODD_NORM  # With this the power spectrum of the parity odd trispectrum sims is identical to the gaussian (p_NL=0) case.
+#MODE = -DPAR_ODD_FNL
+MODE = -DTAILS_FNL
+OPT += -DUSE_TAILS_PK_NORM
+
+#OPT += -DUSE_PAR_ODD_NORM  # With this the power spectrum of the parity odd trispectrum sims is identical to the gaussian (p_NL=0) case.
 #OPT += -DSAVE_PHI_FIELD   # only switch this on if you want to save the potentials (gaussian and non-Gaussian). This is useful for debugging
 
 ifeq ($(MODE),-DONLY_GAUSSIAN)
@@ -46,6 +49,8 @@ else ifeq ($(MODE),-DORTOG_LSS_FNL)
 	EXEC:=2LPTNGORLSS
 else ifeq ($(MODE),-DPAR_ODD_FNL)
 	EXEC:=2LPTNGPARODD
+else ifeq ($(MODE),-DTAILS_FNL)
+	EXEC:=2LPTNGTAILS
 endif
 OPT += $(MODE)
 OPTIONS =  $(OPT)
@@ -82,7 +87,7 @@ HDF5INCL =  -DH5_USE_16_API
 HDF5LIB  =  -lhdf5 -lz
 ifeq (NUM_THREADS,$(findstring NUM_THREADS,$(CONFIGVARS)))
 OPTIMIZE +=  -fopenmp
-OPT      += -DIMPOSE_PINNING -DSOCKETS=4 -DMAX_CORES=16
+OPT      += -DIMPOSE_PINNING -DSOCKETS=4 -DMAX_CORES=16 -Wno-unused-variable
 endif
 endif
 
