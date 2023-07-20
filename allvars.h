@@ -150,5 +150,6 @@ extern double WDM_PartMass_in_kev;
 
 //wrc
 extern double TailsSwitchSigma;
+extern double TailsNewDistVariance;
 extern double TailsExponentPow;
 extern double theoryGausVar;
