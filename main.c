@@ -65,6 +65,10 @@ int main(int argc, char **argv) {
 #ifdef USE_PAR_ODD_NORM
   read_transfer_PNG_table();
 #endif
+
+#ifdef USE_GNL_NORM
+  read_transfer_PNG_table();
+#endif
 #ifdef USE_TAILS_PK_NORM
   read_transfer_PNG_table();
 #endif
@@ -109,6 +113,9 @@ void print_setup(void) {
 #endif
 #ifdef LOCAL_FNL  
   char exec[] = "2LPTNGLC";
+#endif
+#ifdef LOCAL_GNL  
+  char exec[] = "2LPTNGGNL";
 #endif
 #ifdef EQUIL_FNL 
   char exec[] = "2LPTNGEQ";
@@ -188,6 +195,10 @@ void displacement_fields(void) {
   fftw_complex *(cp1p2p3tre);
   fftw_real *(p1p2p3tre);
 // ****  wrc ****
+#ifdef LOCAL_GNL
+  double local_varPhi,varPhi;
+  double transfer_correction;
+#endif
 #ifdef ORTOG_LSS_FNL
   // Will contain phi_G/k (hence invs)
   fftw_complex *(cp1p2p3inv);
@@ -822,6 +833,105 @@ void displacement_fields(void) {
 
       if (ThisTask == 0 ) print_timed_done(7);
 
+// ****** WRC****
+#elif LOCAL_GNL  
+
+      if (ThisTask == 0) {printf("Computing local gNL non-Gaussian potential..."); fflush(stdout);};
+
+      /******* LOCAL PRIMORDIAL POTENTIAL ************/
+      rfftwnd_mpi(Inverse_plan, 1, pot, Workspace, FFTW_NORMAL_ORDER);
+      fflush(stdout);
+
+      /* square the potential in configuration space */
+
+      local_varPhi=0;
+      varPhi=0;
+      for(i = 0; i < Local_nx; i++)
+        for(j = 0; j < Nmesh; j++)
+          for(k = 0; k < Nmesh; k++)
+            {
+             coord = (i * Nmesh + j) * (2 * (Nmesh / 2 + 1)) + k; 
+   
+             local_varPhi += pot[coord]*pot[coord];
+            }
+
+      //MPI_Reduce(&local_varPhi, &varPhi, 1, MPI_DOUBLE, MPI_SUM, 0,MPI_COMM_WORLD);
+      MPI_Allreduce(&local_varPhi, &varPhi, 1, MPI_DOUBLE, MPI_SUM,MPI_COMM_WORLD);
+      varPhi = varPhi/(Nmesh*Nmesh*Nmesh);
+      printf("Local var  %e global var %e\n",local_varPhi,varPhi);
+      for(i = 0; i < Local_nx; i++)
+        for(j = 0; j < Nmesh; j++)
+          for(k = 0; k < Nmesh; k++)
+            {
+             coord = (i * Nmesh + j) * (2 * (Nmesh / 2 + 1)) + k; 
+   
+             pot[coord] = pot[coord] + Fnl * pot[coord]*pot[coord]*pot[coord]-3*varPhi*pot[coord];
+   
+            }
+      MPI_Barrier(MPI_COMM_WORLD);
+      rfftwnd_mpi(Forward_plan, 1, pot, Workspace, FFTW_NORMAL_ORDER);
+
+       /* remove the N^3 I got by forwardfurier and put zero to zero mode */
+
+      nmesh3 = ((unsigned int) Nmesh) * ((unsigned int) Nmesh ) * ((unsigned int) Nmesh);    
+      for(i = 0; i < Local_nx; i++)
+        for(j = 0; j < Nmesh; j++)
+          for(k = 0; k <= Nmesh / 2 ; k++)
+            {
+              coord = (i * Nmesh + j) * (Nmesh / 2 + 1) + k;
+
+// ****************************** DSJ *************************
+          if(SphereMode == 1)
+      {
+              ii = i + Local_x_start;
+
+        if(ii < Nmesh / 2)
+        kvec[0] = ii * 2 * PI / Box;
+        else
+        kvec[0] = -(Nmesh - ii) * 2 * PI / Box;
+
+        if(j < Nmesh / 2)
+        kvec[1] = j * 2 * PI / Box;
+        else
+        kvec[1] = -(Nmesh - j) * 2 * PI / Box;
+
+        if(k < Nmesh / 2)
+        kvec[2] = k * 2 * PI / Box;
+        else
+        kvec[2] = -(Nmesh - k) * 2 * PI / Box;
+
+        kmag = sqrt(kvec[0] * kvec[0] + kvec[1] * kvec[1] + kvec[2] * kvec[2]);
+
+        if(kmag * Box / (2 * PI) > Nsample / 2) { /* select a sphere in k-space */
+        cpot[coord].re = 0.;
+        cpot[coord].im = 0.;
+        continue;
+        }
+      }
+// ****************************** DSJ *************************
+
+              cpot[coord].re /= (double) nmesh3; 
+              cpot[coord].im /= (double) nmesh3; 
+
+            }
+        
+       if(ThisTask == 0) {
+              cpot[0].re = 0.;
+              cpot[0].im = 0.; 
+           }
+
+              kmag = sqrt(kmag2);
+
+#ifdef USE_GNL_NORM
+              transfer_correction = TransferFunc_PNG_Tabulated(kmag)*pow(Fnl,2)+1.0; // this  PNG/Gaus - 1. We need Gaus/PNG
+              transfer_correction = pow(1./(transfer_correction),0.5); // quadratic in Fnl
+              cpot[coord].re *= transfer_correction;
+              cpot[coord].im *= transfer_correction;
+#endif
+      if (ThisTask == 0 ) print_timed_done(7);
+
+
+// ****** WRC****
 #else
 
 #ifdef EQUIL_FNL

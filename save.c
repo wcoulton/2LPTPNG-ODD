@@ -44,6 +44,9 @@ void write_phi(fftw_complex * cpot, int isNonGaus)
 #ifdef LOCAL_FNL  
       sprintf(buf_will, "%s_local",buf_will);
 #endif
+      #ifdef LOCAL_GNL  
+      sprintf(buf_will, "%s_gnl",buf_will);
+#endif
 #ifdef EQUIL_FNL 
       sprintf(buf_will, "%s_equil",buf_will);
 #endif
