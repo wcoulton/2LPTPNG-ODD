@@ -880,9 +880,7 @@ void displacement_fields(void) {
             {
               coord = (i * Nmesh + j) * (Nmesh / 2 + 1) + k;
 
-// ****************************** DSJ *************************
-          if(SphereMode == 1)
-      {
+
               ii = i + Local_x_start;
 
         if(ii < Nmesh / 2)
@@ -901,7 +899,9 @@ void displacement_fields(void) {
         kvec[2] = -(Nmesh - k) * 2 * PI / Box;
 
         kmag = sqrt(kvec[0] * kvec[0] + kvec[1] * kvec[1] + kvec[2] * kvec[2]);
-
+// ****************************** DSJ *************************
+          if(SphereMode == 1)
+      {
         if(kmag * Box / (2 * PI) > Nsample / 2) { /* select a sphere in k-space */
         cpot[coord].re = 0.;
         cpot[coord].im = 0.;
@@ -913,6 +913,17 @@ void displacement_fields(void) {
               cpot[coord].re /= (double) nmesh3; 
               cpot[coord].im /= (double) nmesh3; 
 
+#ifdef USE_GNL_NORM
+   //           kmag = sqrt(kmag2);
+              transfer_correction = TransferFunc_PNG_Tabulated(kmag)*pow(Fnl,2)+1.0; // this  PNG/Gaus - 1. We need Gaus/PNG
+              transfer_correction = pow(1./(transfer_correction),0.5); // quadratic in Fnl
+              if(i <= 5 && j <= 5 && k <=5) {
+                printf("Correction: %f ",transfer_correction);
+              }
+              cpot[coord].re *= transfer_correction;
+              cpot[coord].im *= transfer_correction;
+#endif
+
             }
         
        if(ThisTask == 0) {
@@ -920,14 +931,8 @@ void displacement_fields(void) {
               cpot[0].im = 0.; 
            }
 
-              kmag = sqrt(kmag2);
+              
 
-#ifdef USE_GNL_NORM
-              transfer_correction = TransferFunc_PNG_Tabulated(kmag)*pow(Fnl,2)+1.0; // this  PNG/Gaus - 1. We need Gaus/PNG
-              transfer_correction = pow(1./(transfer_correction),0.5); // quadratic in Fnl
-              cpot[coord].re *= transfer_correction;
-              cpot[coord].im *= transfer_correction;
-#endif
       if (ThisTask == 0 ) print_timed_done(7);
 
 
